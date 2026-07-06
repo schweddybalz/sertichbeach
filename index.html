@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Sertich Beach Tide</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23051f2e;stop-opacity:1' /><stop offset='50%' style='stop-color:%230a3a47;stop-opacity:1' /><stop offset='100%' style='stop-color:%230a2d36;stop-opacity:1' /></linearGradient></defs><rect width='180' height='180' fill='url(%23bg)'/><text x='90' y='50' font-family='Playfair Display, Georgia, serif' font-size='48' font-weight='600' fill='%23d4af8e' text-anchor='middle' letter-spacing='2'>SB</text><path d='M30 90 Q50 75 70 90 T110 90' stroke='%23d4af8e' stroke-width='2.5' fill='none' stroke-linecap='round'/><path d='M30 110 Q50 95 70 110 T110 110' stroke='%237ba8c4' stroke-width='2' fill='none' stroke-linecap='round' opacity='0.7'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -41,14 +42,6 @@
   .header{
     text-align: center;
     width: 100%;
-  }
-  
-  .location{
-    font-size: 13px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 12px;
   }
   
   .title{
@@ -151,6 +144,16 @@
     color: var(--muted);
   }
 
+  .weather-line{
+    margin-top: 32px;
+    padding: 16px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
   .footer{
     display: flex;
     justify-content: center;
@@ -222,9 +225,10 @@
   </div>
 
 <script>
-const STATION = "8665552"; // NOAA Breach Inlet, SC
+const TIDE_STATION = "8665552";
 const TZ = "America/New_York";
 let predictions = [];
+let weather = {};
 
 function pad(n){ return String(n).padStart(2,'0'); }
 
@@ -236,16 +240,41 @@ async function fetchPredictions(){
   const today = new Date();
   const begin = new Date(today.getTime() - 2*24*3600*1000);
   const end = new Date(today.getTime() + 3*24*3600*1000);
-  const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=tide_watch_app&begin_date=${fmtDate(begin)}&end_date=${fmtDate(end)}&datum=MLLW&station=${STATION}&time_zone=gmt&units=english&interval=hilo&format=json`;
+  const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=tide_watch_app&begin_date=${fmtDate(begin)}&end_date=${fmtDate(end)}&datum=MLLW&station=${TIDE_STATION}&time_zone=gmt&units=english&interval=hilo&format=json`;
   const res = await fetch(url);
-  if(!res.ok) throw new Error("NOAA request failed");
+  if(!res.ok) throw new Error("Tide request failed");
   const data = await res.json();
-  if(!data.predictions) throw new Error("No prediction data returned");
+  if(!data.predictions) throw new Error("No tide data");
   return data.predictions.map(p => ({
     time: new Date(p.t.replace(' ','T') + 'Z'),
     type: p.type,
     height: parseFloat(p.v)
   })).sort((a,b) => a.time - b.time);
+}
+
+async function fetchWeather(){
+  try {
+    const cmanUrl = `https://www.ndbc.noaa.gov/data/realtime2/CHTS1.txt`;
+    const cmanRes = await fetch(cmanUrl);
+    const cmanText = await cmanRes.text();
+    const cmanLines = cmanText.split('\n');
+    const cmanData = cmanLines[2]?.split(/\s+/) || [];
+    
+    const windSpd = cmanData[9] !== 'MM' ? parseFloat(cmanData[9]) * 1.94 : null;
+    const airTemp = cmanData[14] !== 'MM' ? (parseFloat(cmanData[14]) * 9/5 + 32) : null;
+
+    const buoyUrl = `https://www.ndbc.noaa.gov/data/realtime2/41004.txt`;
+    const buoyRes = await fetch(buoyUrl);
+    const buoyText = await buoyRes.text();
+    const buoyLines = buoyText.split('\n');
+    const buoyData = buoyLines[2]?.split(/\s+/) || [];
+    
+    const waterTemp = buoyData[13] !== 'MM' ? (parseFloat(buoyData[13]) * 9/5 + 32) : null;
+
+    return { windSpd, airTemp, waterTemp };
+  } catch(err) {
+    return { windSpd: null, airTemp: null, waterTemp: null };
+  }
 }
 
 function findWindow(now){
@@ -303,7 +332,6 @@ function render(){
   const nextType = next.type === 'H' ? 'HIGH' : 'LOW';
   const lastType = last.type === 'H' ? 'HIGH' : 'LOW';
 
-  // Wave curve
   const W = 400, H = 100;
   const pathD = buildCurvePath(rising, W, H);
   const totalMs = next.time - last.time;
@@ -313,6 +341,15 @@ function render(){
   const my = rising
     ? H - ((1 - Math.cos(Math.PI*frac))/2)*H
     : ((1 - Math.cos(Math.PI*frac))/2)*H;
+
+  const { windSpd, airTemp, waterTemp } = weather;
+  const weatherHtml = (windSpd !== null || airTemp !== null || waterTemp !== null) 
+    ? `<div class="weather-line">
+        ${airTemp !== null ? `${Math.round(airTemp)}°F` : '—'} air 
+        &middot; ${waterTemp !== null ? `${Math.round(waterTemp)}°F` : '—'} water 
+        &middot; ${windSpd !== null ? `${Math.round(windSpd)} kt` : '—'} wind
+      </div>`
+    : '';
 
   content.innerHTML = `
     <div class="main-content">
@@ -342,6 +379,8 @@ function render(){
           <div class="tide-sub">${lastType} • ${fmtDuration(now - last.time)} ago</div>
         </div>
       </div>
+
+      ${weatherHtml}
     </div>
   `;
   
@@ -351,18 +390,20 @@ function render(){
 document.getElementById('refresh').addEventListener('click', async () => {
   try{
     predictions = await fetchPredictions();
+    weather = await fetchWeather();
     render();
   }catch(err){
-    document.getElementById('content').innerHTML = `<div class="status-msg">Couldn't reach tide service.</div>`;
+    document.getElementById('content').innerHTML = `<div class="status-msg">Couldn't reach services.</div>`;
   }
 });
 
 async function loadAndRender(){
   try{
     predictions = await fetchPredictions();
+    weather = await fetchWeather();
     render();
   }catch(err){
-    document.getElementById('content').innerHTML = `<div class="status-msg">Couldn't reach tide service.</div>`;
+    document.getElementById('content').innerHTML = `<div class="status-msg">Couldn't reach services.</div>`;
   }
 }
 
