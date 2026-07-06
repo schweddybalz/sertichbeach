@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Sertich Beach Tide</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23051f2e;stop-opacity:1' /><stop offset='50%' style='stop-color:%230a3a47;stop-opacity:1' /><stop offset='100%' style='stop-color:%230a2d36;stop-opacity:1' /></linearGradient></defs><rect width='180' height='180' fill='url(%23bg)'/><text x='90' y='50' font-family='Playfair Display, Georgia, serif' font-size='48' font-weight='600' fill='%23d4af8e' text-anchor='middle' letter-spacing='2'>SB</text><path d='M30 90 Q50 75 70 90 T110 90' stroke='%23d4af8e' stroke-width='2.5' fill='none' stroke-linecap='round'/><path d='M30 110 Q50 95 70 110 T110 110' stroke='%237ba8c4' stroke-width='2' fill='none' stroke-linecap='round' opacity='0.7'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23051f2e'/><stop offset='50%' style='stop-color:%230a3a47'/><stop offset='100%' style='stop-color:%230a2d36'/></linearGradient></defs><rect width='180' height='180' fill='url(%23bg)'/><text x='90' y='55' font-family='Georgia,serif' font-size='52' font-weight='400' fill='%23d4af8e' text-anchor='middle'>SB</text><path d='M25 95 Q45 82 65 95 T105 95' stroke='%23d4af8e' stroke-width='2.5' fill='none' stroke-linecap='round'/><path d='M25 115 Q45 102 65 115 T105 115' stroke='%237ba8c4' stroke-width='2' fill='none' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -253,28 +253,7 @@ async function fetchPredictions(){
 }
 
 async function fetchWeather(){
-  try {
-    const cmanUrl = `https://www.ndbc.noaa.gov/data/realtime2/CHTS1.txt`;
-    const cmanRes = await fetch(cmanUrl);
-    const cmanText = await cmanRes.text();
-    const cmanLines = cmanText.split('\n');
-    const cmanData = cmanLines[2]?.split(/\s+/) || [];
-    
-    const windSpd = cmanData[9] !== 'MM' ? parseFloat(cmanData[9]) * 1.94 : null;
-    const airTemp = cmanData[14] !== 'MM' ? (parseFloat(cmanData[14]) * 9/5 + 32) : null;
-
-    const buoyUrl = `https://www.ndbc.noaa.gov/data/realtime2/41004.txt`;
-    const buoyRes = await fetch(buoyUrl);
-    const buoyText = await buoyRes.text();
-    const buoyLines = buoyText.split('\n');
-    const buoyData = buoyLines[2]?.split(/\s+/) || [];
-    
-    const waterTemp = buoyData[13] !== 'MM' ? (parseFloat(buoyData[13]) * 9/5 + 32) : null;
-
-    return { windSpd, airTemp, waterTemp };
-  } catch(err) {
-    return { windSpd: null, airTemp: null, waterTemp: null };
-  }
+  return { windSpd: null, airTemp: null, waterTemp: null };
 }
 
 function findWindow(now){
