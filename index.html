@@ -31,17 +31,18 @@
 
   .container{
     width: 100%;
-    max-width: 1200px;
+    max-width: 900px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 60px;
+    gap: 50px;
   }
 
   .header{
     text-align: center;
     width: 100%;
   }
+  
   .location{
     font-size: 13px;
     letter-spacing: 0.15em;
@@ -49,6 +50,7 @@
     color: var(--muted);
     margin-bottom: 12px;
   }
+  
   .title{
     font-family: 'Playfair Display', serif;
     font-size: clamp(48px, 8vw, 72px);
@@ -59,12 +61,12 @@
     color: var(--white);
   }
 
-  .content{
+  .main-content{
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 48px;
+    gap: 40px;
   }
 
   .state-section{
@@ -72,19 +74,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    width: 100%;
   }
 
   .state-label{
-    font-size: 12px;
-    letter-spacing: 0.2em;
+    font-size: 11px;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
   }
 
   .state-word{
     font-family: 'Playfair Display', serif;
-    font-size: clamp(80px, 15vw, 140px);
+    font-size: clamp(72px, 16vw, 120px);
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1;
@@ -94,45 +97,65 @@
   .state-word.rising{ color: var(--rising); }
   .state-word.falling{ color: var(--falling); }
 
-  .next-tide{
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+  .wave-container{
+    width: 100%;
+    height: 140px;
+    position: relative;
+    margin: 20px 0;
   }
 
-  .next-label{
+  svg.curve{ width: 100%; height: 100%; }
+
+  @keyframes bob{
+    0%,100%{ transform: translateY(0); }
+    50%{ transform: translateY(-3px); }
+  }
+  .marker-dot{ animation: bob 3s ease-in-out infinite; transform-origin: center; }
+
+  .tide-info{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .tide-item{
+    text-align: center;
+    padding: 20px;
+    border-top: 1px solid var(--line);
+  }
+
+  .tide-item:first-child{ border-top: none; }
+
+  .tide-label{
     font-size: 11px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
+    margin-bottom: 8px;
   }
 
-  .next-time{
+  .tide-main{
     font-family: 'Playfair Display', serif;
-    font-size: clamp(42px, 8vw, 64px);
+    font-size: clamp(36px, 7vw, 52px);
     font-weight: 500;
     letter-spacing: 0.01em;
     margin: 0;
+    margin-bottom: 4px;
   }
 
-  .next-countdown{
-    font-size: 14px;
-    letter-spacing: 0.1em;
+  .tide-sub{
+    font-size: 13px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
   }
-
-  .next-countdown.rising{ color: var(--rising); }
-  .next-countdown.falling{ color: var(--falling); }
 
   .footer{
     display: flex;
     justify-content: center;
     gap: 24px;
     align-items: center;
-    margin-top: 40px;
     font-size: 12px;
     color: var(--muted);
     width: 100%;
@@ -168,17 +191,17 @@
 
   /* Tablet & desktop */
   @media (min-width: 768px){
-    .container{ gap: 80px; }
-    .content{ flex-direction: row; justify-content: center; align-items: flex-start; gap: 120px; }
-    .state-section{ flex: 0 1 auto; }
-    .next-tide{ flex: 0 1 auto; }
+    .container{ gap: 60px; }
+    .main-content{ gap: 50px; }
+    .tide-info{ flex-direction: row; justify-content: center; gap: 60px; }
+    .tide-item{ flex: 0 1 auto; border: none; padding: 0; }
     .title{ font-size: 80px; }
-    .state-word{ font-size: 140px; }
-    .next-time{ font-size: 64px; }
+    .state-word{ font-size: 120px; }
+    .tide-main{ font-size: 52px; }
   }
 
   @media (prefers-reduced-motion: reduce){
-    * { animation: none !important; }
+    .marker-dot { animation: none !important; }
   }
 </style>
 </head>
@@ -190,7 +213,7 @@
     </div>
 
     <div id="content">
-      <div class="status-msg" id="status">Loading&hellip;</div>
+      <div class="status-msg" id="status">Loading…</div>
     </div>
 
     <div class="footer">
@@ -248,6 +271,23 @@ function fmtDuration(ms){
   return `${h}h ${m}m`;
 }
 
+function buildCurvePath(isRising, w, h){
+  const N = 100;
+  let d = "";
+  for(let i=0;i<=N;i++){
+    const frac = i/N;
+    let y;
+    if(isRising){
+      y = h - ((1 - Math.cos(Math.PI*frac))/2)*h;
+    } else {
+      y = ((1 - Math.cos(Math.PI*frac))/2)*h;
+    }
+    const x = (i/N)*w;
+    d += (i===0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+  }
+  return d;
+}
+
 function render(){
   const now = new Date();
   const { last, next } = findWindow(now);
@@ -262,19 +302,47 @@ function render(){
   const stateWord = rising ? 'RISING' : 'FALLING';
   const stateClass = rising ? 'rising' : 'falling';
   const nextType = next.type === 'H' ? 'HIGH' : 'LOW';
-  const timeStr = fmtTime(next.time);
-  const countdownStr = fmtDuration(next.time - now);
+  const lastType = last.type === 'H' ? 'HIGH' : 'LOW';
+
+  // Wave curve
+  const W = 400, H = 100;
+  const pathD = buildCurvePath(rising, W, H);
+  const totalMs = next.time - last.time;
+  const elapsedMs = now - last.time;
+  const frac = Math.min(1, Math.max(0, elapsedMs/totalMs));
+  const mx = frac * W;
+  const my = rising
+    ? H - ((1 - Math.cos(Math.PI*frac))/2)*H
+    : ((1 - Math.cos(Math.PI*frac))/2)*H;
 
   content.innerHTML = `
-    <div class="content">
+    <div class="main-content">
       <div class="state-section">
         <div class="state-label">Water</div>
         <div class="state-word ${stateClass}">${stateWord}</div>
       </div>
-      <div class="next-tide">
-        <div class="next-label">Next Tide</div>
-        <div class="next-time">${timeStr}</div>
-        <div class="next-countdown ${stateClass}">${nextType} • ${countdownStr}</div>
+
+      <div class="wave-container">
+        <svg class="curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          <path d="${pathD}" 
+            fill="none" 
+            stroke="${rising ? 'rgba(212,175,142,0.4)' : 'rgba(123,168,196,0.4)'}" 
+            stroke-width="2.5" />
+          <circle class="marker-dot" cx="${mx}" cy="${my}" r="5" fill="${rising ? '#d4af8e' : '#7ba8c4'}" />
+        </svg>
+      </div>
+
+      <div class="tide-info">
+        <div class="tide-item">
+          <div class="tide-label">Next Tide</div>
+          <div class="tide-main">${fmtTime(next.time)}</div>
+          <div class="tide-sub">${nextType} • in ${fmtDuration(next.time - now)}</div>
+        </div>
+        <div class="tide-item">
+          <div class="tide-label">Last Tide</div>
+          <div class="tide-main">${fmtTime(last.time)}</div>
+          <div class="tide-sub">${lastType} • ${fmtDuration(now - last.time)} ago</div>
+        </div>
       </div>
     </div>
   `;
@@ -292,7 +360,6 @@ document.getElementById('refresh').addEventListener('click', async () => {
 });
 
 async function loadAndRender(){
-  const statusEl = document.getElementById('status');
   try{
     predictions = await fetchPredictions();
     render();
