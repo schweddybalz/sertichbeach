@@ -296,7 +296,7 @@ async function fetchWeather(){
 
   try {
     // Air temp + wind — Open-Meteo forecast API (free, no key, CORS-friendly)
-    const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=America%2FNew_York`;
+    const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York`;
     const wxData = await fetch(wxUrl).then(r => r.json());
     airTemp = wxData.current?.temperature_2m ?? null;
     windSpd = wxData.current?.wind_speed_10m ?? null;
@@ -382,7 +382,7 @@ function render(){
   const weatherHtml = `<div class="weather-line">
     ${airTemp !== null ? `${Math.round(airTemp)}°F` : '—'} air 
     &middot; ${waterTemp !== null ? `${Math.round(waterTemp)}°F` : '—'} water 
-    &middot; ${windSpd !== null ? `${Math.round(windSpd)} kt` : '—'} ${windDir !== null ? degToCompass(windDir) : ''} wind
+    &middot; ${windSpd !== null ? `${Math.round(windSpd)} mph ${windDir !== null ? degToCompass(windDir) : ''}` : '—'}
   </div>`;
 
   content.innerHTML = `
