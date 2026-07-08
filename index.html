@@ -277,16 +277,22 @@ async function fetchPredictions(){
   })).sort((a,b) => a.time - b.time);
 }
 
+function degToCompass(deg){
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
 async function fetchWeather(){
   const lat = 32.7706, lon = -79.8397;
-  let airTemp = null, windSpd = null, waterTemp = null;
+  let airTemp = null, windSpd = null, windDir = null, waterTemp = null;
 
   try {
     // Air temp + wind — Open-Meteo forecast API (free, no key, CORS-friendly)
-    const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=America%2FNew_York`;
+    const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=America%2FNew_York`;
     const wxData = await fetch(wxUrl).then(r => r.json());
     airTemp = wxData.current?.temperature_2m ?? null;
     windSpd = wxData.current?.wind_speed_10m ?? null;
+    windDir = wxData.current?.wind_direction_10m ?? null;
   } catch(e) {}
 
   try {
@@ -296,7 +302,7 @@ async function fetchWeather(){
     waterTemp = marineData.current?.sea_surface_temperature ?? null;
   } catch(e) {}
 
-  return { airTemp, windSpd, waterTemp };
+  return { airTemp, windSpd, windDir, waterTemp };
 }
 
 function findWindow(now){
@@ -364,11 +370,11 @@ function render(){
     ? H - ((1 - Math.cos(Math.PI*frac))/2)*H
     : ((1 - Math.cos(Math.PI*frac))/2)*H;
 
-  const { windSpd, airTemp, waterTemp } = weather;
+  const { windSpd, windDir, airTemp, waterTemp } = weather;
   const weatherHtml = `<div class="weather-line">
     ${airTemp !== null ? `${Math.round(airTemp)}°F` : '—'} air 
     &middot; ${waterTemp !== null ? `${Math.round(waterTemp)}°F` : '—'} water 
-    &middot; ${windSpd !== null ? `${Math.round(windSpd)} kt` : '—'} wind
+    &middot; ${windSpd !== null ? `${Math.round(windSpd)} kt` : '—'} ${windDir !== null ? degToCompass(windDir) : ''} wind
   </div>`;
 
   content.innerHTML = `
