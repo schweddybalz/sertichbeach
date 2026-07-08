@@ -278,28 +278,25 @@ async function fetchPredictions(){
 }
 
 async function fetchWeather(){
+  const lat = 32.7706, lon = -79.8397;
+  let airTemp = null, windSpd = null, waterTemp = null;
+
   try {
-    const cmanUrl = `https://www.ndbc.noaa.gov/data/realtime2/CHTS1.txt`;
-    const cmanRes = await fetch(cmanUrl);
-    const cmanText = await cmanRes.text();
-    const cmanLines = cmanText.split('\n');
-    const cmanData = cmanLines[2]?.split(/\s+/) || [];
-    
-    const windSpd = cmanData[9] !== 'MM' ? parseFloat(cmanData[9]) * 1.94 : null;
-    const airTemp = cmanData[14] !== 'MM' ? (parseFloat(cmanData[14]) * 9/5 + 32) : null;
+    // Air temp + wind — Open-Meteo forecast API (free, no key, CORS-friendly)
+    const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=America%2FNew_York`;
+    const wxData = await fetch(wxUrl).then(r => r.json());
+    airTemp = wxData.current?.temperature_2m ?? null;
+    windSpd = wxData.current?.wind_speed_10m ?? null;
+  } catch(e) {}
 
-    const buoyUrl = `https://www.ndbc.noaa.gov/data/realtime2/41004.txt`;
-    const buoyRes = await fetch(buoyUrl);
-    const buoyText = await buoyRes.text();
-    const buoyLines = buoyText.split('\n');
-    const buoyData = buoyLines[2]?.split(/\s+/) || [];
-    
-    const waterTemp = buoyData[13] !== 'MM' ? (parseFloat(buoyData[13]) * 9/5 + 32) : null;
+  try {
+    // Sea surface temp — Open-Meteo Marine API (free, no key, CORS-friendly)
+    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=sea_surface_temperature&temperature_unit=fahrenheit`;
+    const marineData = await fetch(marineUrl).then(r => r.json());
+    waterTemp = marineData.current?.sea_surface_temperature ?? null;
+  } catch(e) {}
 
-    return { windSpd, airTemp, waterTemp };
-  } catch(err) {
-    return { windSpd: null, airTemp: null, waterTemp: null };
-  }
+  return { airTemp, windSpd, waterTemp };
 }
 
 function findWindow(now){
