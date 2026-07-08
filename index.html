@@ -105,8 +105,8 @@
   svg.curve{ width: 100%; height: 100%; overflow: visible; }
 
   @keyframes bob{
-    0%,100%{ transform: translateY(3px); }
-    50%{ transform: translateY(-3px); }
+    from{ transform: translateY(-4px); }
+    to{ transform: translateY(4px); }
   }
   .marker-wrap{
     position: absolute;
@@ -115,7 +115,7 @@
   .marker-dot{
     width: 10px; height: 10px;
     border-radius: 50%;
-    animation: bob 3s ease-in-out infinite;
+    animation: bob 1.5s ease-in-out infinite alternate;
   }
 
   .tide-info{
